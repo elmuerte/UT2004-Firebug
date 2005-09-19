@@ -1,17 +1,17 @@
 /*******************************************************************************
-	Firebug
-	This mutator will add the firebug weapon to the game.
+    Firebug
+    This mutator will add the firebug weapon to the game.
 
-	A weapon mod. Use a gascan to create a trail of gasoline and set it on fire
-	with your lighter (or other weapon).
+    A weapon mod. Use a gascan to create a trail of gasoline and set it on fire
+    with your lighter (or other weapon).
 
-	Model and idea by barnEbiss ...
-	Code by Michiel "El Muerte" Hendriks
+    Model and idea by barnEbiss ...
+    Code by Michiel "El Muerte" Hendriks
 
-	<!-- $Id: mutFirebug.uc,v 1.1 2005/09/19 09:30:38 elmuerte Exp $ -->
+    <!-- $Id: mutFirebug.uc,v 1.2 2005/09/19 14:02:29 elmuerte Exp $ -->
 *******************************************************************************/
 
-class Firebug extends Mutator;
+class mutFirebug extends Mutator;
 
 /*
 
@@ -26,6 +26,6 @@ bullet weapon and rocket weapon can also light the fire
 
 defaultproperties
 {
-	FriendlyName="Firebug"
-	Description="..."
+    FriendlyName="Firebug"
+    Description="..."
 }
