@@ -8,7 +8,7 @@
     Model and idea by barnEbiss ...
     Code by Michiel "El Muerte" Hendriks
 
-    <!-- $Id: mutFirebug.uc,v 1.2 2005/09/19 14:02:29 elmuerte Exp $ -->
+    <!-- $Id: mutFirebug.uc,v 1.3 2005/09/23 09:24:21 elmuerte Exp $ -->
 *******************************************************************************/
 
 class mutFirebug extends Mutator;
@@ -24,8 +24,28 @@ bullet weapon and rocket weapon can also light the fire
 
 */
 
+function bool CheckReplacement( Actor Other, out byte bSuperRelevant )
+{
+    if (Other.class == class'BioRifle')
+    {
+        ReplaceWith(Other, string(class'FirebugWeapon'));
+        return false;
+    }
+    else if (Other.class == class'BioriflePickup')
+    {
+        ReplaceWith(Other, string(class'FireBugPickup'));
+        return false;
+    }
+    else if (Other.class == class'BioAmmoPickup')
+    {
+        ReplaceWith(Other, string(class'fbGasolinePickup'));
+        return false;
+    }
+    return true;
+}
+
 defaultproperties
 {
     FriendlyName="Firebug"
-    Description="..."
+    Description="ALPHA: currently replaces the biorifle"
 }
