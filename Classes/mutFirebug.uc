@@ -8,10 +8,12 @@
     Model and idea by barnEbiss ...
     Code by Michiel "El Muerte" Hendriks
 
-    <!-- $Id: mutFirebug.uc,v 1.3 2005/09/23 09:24:21 elmuerte Exp $ -->
+    <!-- $Id: mutFirebug.uc,v 1.4 2005/10/01 09:35:45 elmuerte Exp $ -->
 *******************************************************************************/
 
-class mutFirebug extends Mutator;
+class mutFirebug extends Mutator config;
+
+var config bool bDebug;
 
 /*
 
@@ -44,8 +46,19 @@ function bool CheckReplacement( Actor Other, out byte bSuperRelevant )
     return true;
 }
 
+function ModifyPlayer(Pawn Other)
+{
+	super.ModifyPlayer(Other);
+	if (bDebug)
+	{
+	   Other.Controller.ConsoleCommand("rend collision");
+	}
+}
+
 defaultproperties
 {
     FriendlyName="Firebug"
     Description="ALPHA: currently replaces the biorifle"
+
+    bDebug=true
 }
