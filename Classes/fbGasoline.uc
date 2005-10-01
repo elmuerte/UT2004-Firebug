@@ -3,9 +3,16 @@
 
     Creation date: 19/09/2005 13:38
     Copyright (c) 2005, elmuerte
-    <!-- $Id: fbGasoline.uc,v 1.3 2005/10/01 09:35:45 elmuerte Exp $ -->
+    <!-- $Id: fbGasoline.uc,v 1.4 2005/10/01 16:44:29 elmuerte Exp $ -->
 *******************************************************************************/
 
+/*
+    TODO:
+        timed hurt doesn't work
+        collision issue:
+            collision piviot should be the floor
+            when location is raised radiusactors doesn't return properly
+*/
 class fbGasoline extends BioGlob;
 
 /** class to use to show the gasoline on the floor */
@@ -26,12 +33,22 @@ var() float FireRadiusMod;
 /** start burning when landed */
 var bool InstantBurn;
 
+/** keeps track of number of touching actors to reduce timer usage */
 var protected int TouchCount;
 
 simulated function Destroyed()
 {
-    if (Stain != none) Stain.Destroy();
-    super.Destroyed();
+    if ( !bNoFX && EffectIsRelevant(Location,false) )
+    {
+        Spawn(class'pclSmallSmoke'); //todo: smaller smoke
+    }
+	if ( Fear != None )
+		Fear.Destroy();
+    if (Trail != None)
+        Trail.Destroy();
+    if (Stain != none)
+        Stain.Destroy();
+    super(Projectile).Destroyed();
 }
 
 function bool isBurning()
@@ -97,6 +114,7 @@ auto state Flying
                 else if (bMergeGlobs)
                 {
                     Glob.MergeWithGlob(GoopLevel); // balancing on the brink of infinite recursion
+                    if (InstantBurn) Glob.
                     bNoFX = true;
                     Destroy();
                 }
@@ -107,21 +125,24 @@ auto state Flying
         }
         else if (Other != Instigator && (Other.IsA('Pawn') || Other.IsA('DestroyableObjective') || Other.bProjTarget))
             BlowUp( HitLocation );
-		else if ( Other != Instigator && Other.bBlockActors )
-			HitWall( Normal(HitLocation-Location), Other );
+        else if ( Other != Instigator && Other.bBlockActors )
+            HitWall( Normal(HitLocation-Location), Other );
     }
 
     simulated function TakeDamage( int Damage, Pawn InstigatedBy, Vector HitLocation, Vector Momentum, class<DamageType> DamageType )
     {
         if (DamageTypeSetsFire(DamageType))
         {
-            GotoState('Burning');
+            InstantBurn = true;
         }
     }
 }
 
 state OnGround
 {
+ignores
+    ProcessTouch, Timer;
+
     simulated function BeginState()
     {
         if (InstantBurn)
@@ -139,21 +160,24 @@ state OnGround
         foreach RadiusActors(class'fbGasoline', fb, CollisionRadius*FireRadiusMod)
         {
             if (fb == self || !fb.isBurning()) continue;
-            GotoState('Burning');
+            GotoState('DelayedBurning');
             return;
         }
     }
 
     // touch doesn't set it off
-    simulated function ProcessTouch(Actor Other, Vector HitLocation);
+    //simulated function ProcessTouch(Actor Other, Vector HitLocation);
 
-    simulated function Timer();
+    //simulated function Timer();
 
     simulated function TakeDamage( int Damage, Pawn InstigatedBy, Vector HitLocation, Vector Momentum, class<DamageType> DamageType )
     {
         if (DamageTypeSetsFire(DamageType))
         {
-            GotoState('Burning');
+            if (DamageType == MyDamageType)
+                GotoState('DelayedBurning');
+            else
+                GotoState('Burning');
         }
     }
 
@@ -175,18 +199,37 @@ state OnGround
     }
 }
 
+state DelayedBurning
+{
+ignores
+    TakeDamage, MergeWithGlob, ProcessTouch;
+
+Begin:
+    sleep(0.5);
+    GotoState('Burning');
+}
+
 state Burning
 {
     simulated function BeginState()
     {
         local HitFlameHuge fire;
-        log("Set on fire");
+        local vector newloc;
         bBlockZeroExtentTraces=false;
         SetDrawType(DT_None);
-        SetCollisionSize(CollisionRadius+7, 70.0+(GoopVolume*5));
         fire = spawn(class'HitFlameHuge',,, Location);
         fire.LifeSpan = BurnTime+3; // 3seconds more because of the 3second reduce
         LifeSpan = BurnTime;
+        Stain.LifeSpan = BurnTime;
+
+        SetCollisionSize(CollisionRadius+7, 70.0+(GoopVolume*10));
+
+        /*
+        SetCollisionSize(CollisionRadius+7, 35.0+(GoopVolume*5));
+        newloc = Location;
+        newloc.Z = newloc.Z+CollisionHeight;
+        SetLocation(newloc);
+        */
     }
 
     function CheckSetOnFire()
@@ -200,11 +243,12 @@ state Burning
         }
     }
 
-    simulated event timer()
+    simulated event Timer()
     {
         if (Role == ROLE_Authority)
         {
-            DelayedHurtRadius(BaseDamage, DamageRadius * GoopVolume, MyDamageType, MomentumTransfer, Location);
+            log("timed hurt");
+            DelayedHurtRadius(BaseDamage, CollisionRadius, MyDamageType, MomentumTransfer, Location);
         }
     }
 
@@ -213,29 +257,34 @@ state Burning
         log("Give damage to"@Other@self);
         if (Role == ROLE_Authority)
         {
-            DelayedHurtRadius(BaseDamage, DamageRadius * GoopVolume, MyDamageType, MomentumTransfer, HitLocation);
+            //DelayedHurtRadius(BaseDamage, CollisionRadius, MyDamageType, MomentumTransfer, HitLocation);
         }
     }
 
     simulated function Touch(Actor Other)
     {
         super.Touch(Other);
-        if ( Other == None ) return;
-        if (TouchCount == 0) SetTimer(1, true); //TODO: don't hardcode
-        TouchCount++;
+        if (Role == ROLE_Authority)
+        {
+            if ( Pawn(Other) == None ) return;
+            if (TouchCount == 0) SetTimer(1, true); //TODO: don't hardcode
+            TouchCount++;
+        }
     }
 
     simulated function UnTouch( Actor Other )
     {
         super.UnTouch(Other);
-        if ( Other == None ) return;
-        TouchCount--;
-        if (TouchCount == 0) SetTimer(0, false);
-        if (TouchCount < 0) TouchCount = 0; //shouldn't happen
+        if (Role == ROLE_Authority)
+        {
+            if ( Pawn(Other) == None ) return;
+            TouchCount--;
+            if (TouchCount == 0) SetTimer(0, false);
+            if (TouchCount < 0) TouchCount = 0; //shouldn't happen
+        }
     }
 
 Begin:
-    log("CheckFire");
     sleep(0.5); //TODO: don't hardcode
     CheckSetOnFire();
 }
