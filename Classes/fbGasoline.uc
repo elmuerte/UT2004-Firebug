@@ -3,17 +3,12 @@
 
     Creation date: 19/09/2005 13:38
     Copyright (c) 2005, elmuerte
-    <!-- $Id: fbGasoline.uc,v 1.4 2005/10/01 16:44:29 elmuerte Exp $ -->
+    <!-- $Id: fbGasoline.uc,v 1.5 2005/10/07 09:57:49 elmuerte Exp $ -->
 *******************************************************************************/
 
-/*
-    TODO:
-        timed hurt doesn't work
-        collision issue:
-            collision piviot should be the floor
-            when location is raised radiusactors doesn't return properly
-*/
 class fbGasoline extends BioGlob;
+
+//TODO: not flamable in water
 
 /** class to use to show the gasoline on the floor */
 var class<fbGasolineStain> DecallClass;
@@ -23,6 +18,9 @@ var fbGasolineStain Stain;
 
 /** number of seconds it will burn */
 var() float BurnTime;
+
+/** number of seconds it takes forchain burning to work */
+var() float DelayedBurn;
 
 /**
     the collision radius multiplied with this is the radius checked to set other
@@ -36,14 +34,26 @@ var bool InstantBurn;
 /** keeps track of number of touching actors to reduce timer usage */
 var protected int TouchCount;
 
+/**
+    the baselocation of this actor, the location is changed when it reaches the
+    burning state, this will be the original location
+*/
+var vector BaseLocation; //!TODO: replicate
+
+replication
+{
+    reliable if (Role == ROLE_Authority)
+        BaseLocation;
+}
+
 simulated function Destroyed()
 {
     if ( !bNoFX && EffectIsRelevant(Location,false) )
     {
-        Spawn(class'pclSmallSmoke'); //todo: smaller smoke
+        Spawn(class'fbSmallSmoke',,,BaseLocation);
     }
-	if ( Fear != None )
-		Fear.Destroy();
+    if ( Fear != None )
+        Fear.Destroy();
     if (Trail != None)
         Trail.Destroy();
     if (Stain != none)
@@ -72,6 +82,7 @@ auto state Flying
         SurfaceNormal = HitNormal;
 
         // spawn globlings
+        //TODO: fix
         CoreGoopLevel = Rand3 + MaxGoopLevel - 3;
         if (GoopLevel > CoreGoopLevel)
         {
@@ -114,7 +125,8 @@ auto state Flying
                 else if (bMergeGlobs)
                 {
                     Glob.MergeWithGlob(GoopLevel); // balancing on the brink of infinite recursion
-                    if (InstantBurn) Glob.
+                    // could have got instant burn when going through the air
+                    if (InstantBurn) Glob.TakeDamage(1, Instigator, vect(0,0,0), vect(0,0,0), MyDamageType);
                     bNoFX = true;
                     Destroy();
                 }
@@ -145,6 +157,7 @@ ignores
 
     simulated function BeginState()
     {
+        BaseLocation = Location;
         if (InstantBurn)
         {
             GotoState('Burning');
@@ -157,7 +170,7 @@ ignores
     {
         local fbGasoline fb;
         // find nearby burning gasoline
-        foreach RadiusActors(class'fbGasoline', fb, CollisionRadius*FireRadiusMod)
+        foreach RadiusActors(class'fbGasoline', fb, CollisionRadius*FireRadiusMod, BaseLocation+vect(0,0,35))
         {
             if (fb == self || !fb.isBurning()) continue;
             GotoState('DelayedBurning');
@@ -205,7 +218,7 @@ ignores
     TakeDamage, MergeWithGlob, ProcessTouch;
 
 Begin:
-    sleep(0.5);
+    sleep(DelayedBurn);
     GotoState('Burning');
 }
 
@@ -219,24 +232,21 @@ state Burning
         SetDrawType(DT_None);
         fire = spawn(class'HitFlameHuge',,, Location);
         fire.LifeSpan = BurnTime+3; // 3seconds more because of the 3second reduce
+        //TODO: set size
         LifeSpan = BurnTime;
-        Stain.LifeSpan = BurnTime;
+        Stain.EndLife(BurnTime);
 
-        SetCollisionSize(CollisionRadius+7, 70.0+(GoopVolume*10));
-
-        /*
         SetCollisionSize(CollisionRadius+7, 35.0+(GoopVolume*5));
         newloc = Location;
         newloc.Z = newloc.Z+CollisionHeight;
         SetLocation(newloc);
-        */
     }
 
     function CheckSetOnFire()
     {
         local fbGasoline fb;
         // find nearby burning gasoline
-        foreach RadiusActors(class'fbGasoline', fb, CollisionRadius*FireRadiusMod)
+        foreach RadiusActors(class'fbGasoline', fb, CollisionRadius*FireRadiusMod, BaseLocation)
         {
             if (fb == self || fb.isBurning()) continue;
             fb.TakeDamage(1, Instigator, vect(0,0,0), vect(0,0,0), MyDamageType);
@@ -247,17 +257,15 @@ state Burning
     {
         if (Role == ROLE_Authority)
         {
-            log("timed hurt");
             DelayedHurtRadius(BaseDamage, CollisionRadius, MyDamageType, MomentumTransfer, Location);
         }
     }
 
     simulated function ProcessTouch(Actor Other, Vector HitLocation)
     {
-        log("Give damage to"@Other@self);
         if (Role == ROLE_Authority)
         {
-            //DelayedHurtRadius(BaseDamage, CollisionRadius, MyDamageType, MomentumTransfer, HitLocation);
+            DelayedHurtRadius(BaseDamage, CollisionRadius, MyDamageType, MomentumTransfer, HitLocation);
         }
     }
 
@@ -284,8 +292,14 @@ state Burning
         }
     }
 
+    simulated function TakeDamage( int Damage, Pawn InstigatedBy, Vector HitLocation, Vector Momentum, class<DamageType> DamageType )
+    {
+        log(DamageType);
+        //TODO: explosiong will stop the fire
+    }
+
 Begin:
-    sleep(0.5); //TODO: don't hardcode
+    sleep(DelayedBurn); //TODO: don't hardcode
     CheckSetOnFire();
 }
 
@@ -309,10 +323,11 @@ defaultproperties
     DecallClass=class'fbGasolineStain'
     DrawScale=1
     LifeSpan=60
-    BurnTime=90
+    BurnTime=30
     MyDamageType=class'DamFire'
     FireRadiusMod=1.25
     InstantBurn=false
     TouchCount=0
+    DelayedBurn=0.25
     //DrawType=DT_None
 }

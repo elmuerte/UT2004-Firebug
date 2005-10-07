@@ -3,7 +3,7 @@
 
     Creation date: 19/09/2005 13:55
     Copyright (c) 2005, elmuerte
-    <!-- $Id: fbGasolineStain.uc,v 1.1 2005/09/19 14:02:29 elmuerte Exp $ -->
+    <!-- $Id: fbGasolineStain.uc,v 1.2 2005/10/07 09:57:49 elmuerte Exp $ -->
 *******************************************************************************/
 
 class fbGasolineStain extends DynamicProjector;
@@ -19,7 +19,7 @@ event PreBeginPlay()
         return;
     }
     if ( FRand() < 0.5 )
-		ProjTexture = texture'fbGasolineStain2';
+        ProjTexture = texture'fbGasolineStain2';
     super.PreBeginPlay();
 }
 
@@ -28,11 +28,11 @@ function PostBeginPlay()
     local Vector RX, RY, RZ;
     local Rotator R;
 
-	if ( PhysicsVolume.bNoDecals )
-	{
-		Destroy();
-		return;
-	}
+    if ( PhysicsVolume.bNoDecals )
+    {
+        Destroy();
+        return;
+    }
     R.Yaw = 0;
     R.Pitch = 0;
     R.Roll = Rand(65535);
@@ -46,27 +46,32 @@ function PostBeginPlay()
     Super.PostBeginPlay();
 }
 
+function EndLife(float LifeTime)
+{
+    LifeSpan = LifeTime;
+    //TODO: DO FADE!!!
+}
+
 defaultproperties
 {
     LifeSpan=0
-	DrawScale=1
-	ProjTexture=texture'fbGasolineStain1'
-	bClipStaticMesh=True
+    DrawScale=1
+    ProjTexture=texture'fbGasolineStain1'
+    bClipStaticMesh=True
 
-	bGameRelevant=true
+    bGameRelevant=true
     //PushBack=24
-	FOV=1
-	MaxTraceDistance=60
-	bProjectBSP=true
-	bProjectTerrain=true
-	bProjectStaticMesh=true
-	bProjectActor=false
-	bClipBSP=true
+    FOV=1
+    MaxTraceDistance=60
+    bProjectBSP=true
+    bProjectTerrain=true
+    bProjectStaticMesh=true
+    bProjectActor=false
+    bClipBSP=true
     bNoDelete=false
     bStatic=false
-	FadeInTime=0.125
+    FadeInTime=0.125
     MaterialBlendingOp=PB_None
-	FrameBufferBlendingOp=PB_Modulate
-	GradientTexture=GRADIENT_Clip
-    //RandomOrient=true
+    FrameBufferBlendingOp=PB_Modulate
+    GradientTexture=GRADIENT_Clip
 }
