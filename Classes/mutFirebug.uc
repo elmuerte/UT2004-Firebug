@@ -8,7 +8,7 @@
     Model and idea by barnEbiss ...
     Code by Michiel "El Muerte" Hendriks
 
-    <!-- $Id: mutFirebug.uc,v 1.4 2005/10/01 09:35:45 elmuerte Exp $ -->
+    <!-- $Id: mutFirebug.uc,v 1.5 2005/10/22 12:42:37 elmuerte Exp $ -->
 *******************************************************************************/
 
 class mutFirebug extends Mutator config;
@@ -44,15 +44,6 @@ function bool CheckReplacement( Actor Other, out byte bSuperRelevant )
         return false;
     }
     return true;
-}
-
-function ModifyPlayer(Pawn Other)
-{
-	super.ModifyPlayer(Other);
-	if (bDebug)
-	{
-	   Other.Controller.ConsoleCommand("rend collision");
-	}
 }
 
 defaultproperties

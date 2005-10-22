@@ -3,9 +3,10 @@
 
     Creation date: 19/09/2005 13:55
     Copyright (c) 2005, elmuerte
-    <!-- $Id: fbGasolineStain.uc,v 1.2 2005/10/07 09:57:49 elmuerte Exp $ -->
+    <!-- $Id: fbGasolineStain.uc,v 1.3 2005/10/22 12:42:37 elmuerte Exp $ -->
 *******************************************************************************/
-
+//TODO: fade
+//  spawn a 2nd projector to do the actual fading?
 class fbGasolineStain extends DynamicProjector;
 
 #exec TEXTURE IMPORT NAME=fbGasolineStain1 FILE=TEXTURES\fbGasolineStain1.tga LODSET=2 MODULATED=1 UCLAMPMODE=CLAMP VCLAMPMODE=CLAMP
@@ -20,6 +21,7 @@ event PreBeginPlay()
     }
     if ( FRand() < 0.5 )
         ProjTexture = texture'fbGasolineStain2';
+
     super.PreBeginPlay();
 }
 
@@ -49,7 +51,6 @@ function PostBeginPlay()
 function EndLife(float LifeTime)
 {
     LifeSpan = LifeTime;
-    //TODO: DO FADE!!!
 }
 
 defaultproperties

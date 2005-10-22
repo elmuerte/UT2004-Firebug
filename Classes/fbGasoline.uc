@@ -3,7 +3,7 @@
 
     Creation date: 19/09/2005 13:38
     Copyright (c) 2005, elmuerte
-    <!-- $Id: fbGasoline.uc,v 1.5 2005/10/07 09:57:49 elmuerte Exp $ -->
+    <!-- $Id: fbGasoline.uc,v 1.6 2005/10/22 12:42:37 elmuerte Exp $ -->
 *******************************************************************************/
 
 class fbGasoline extends BioGlob;
@@ -15,6 +15,8 @@ var class<fbGasolineStain> DecallClass;
 
 /** */
 var fbGasolineStain Stain;
+
+var HitFlameHuge fire;
 
 /** number of seconds it will burn */
 var() float BurnTime;
@@ -48,7 +50,7 @@ replication
 
 simulated function Destroyed()
 {
-    if ( !bNoFX && EffectIsRelevant(Location,false) )
+    if ( IsInState('Burning') && !bNoFX && EffectIsRelevant(Location,false) )
     {
         Spawn(class'fbSmallSmoke',,,BaseLocation);
     }
@@ -58,6 +60,8 @@ simulated function Destroyed()
         Trail.Destroy();
     if (Stain != none)
         Stain.Destroy();
+    if (fire != none)
+        fire.Destroy();
     super(Projectile).Destroyed();
 }
 
@@ -104,7 +108,6 @@ auto state Flying
 
         SetDrawScale3D(vect(2.5,2.5,0.01));
 
-        Fear = Spawn(class'AvoidMarker');
         GotoState('OnGround');
     }
 
@@ -226,8 +229,8 @@ state Burning
 {
     simulated function BeginState()
     {
-        local HitFlameHuge fire;
         local vector newloc;
+        Fear = Spawn(class'AvoidMarker');
         bBlockZeroExtentTraces=false;
         SetDrawType(DT_None);
         fire = spawn(class'HitFlameHuge',,, Location);
@@ -294,8 +297,11 @@ state Burning
 
     simulated function TakeDamage( int Damage, Pawn InstigatedBy, Vector HitLocation, Vector Momentum, class<DamageType> DamageType )
     {
-        log(DamageType);
-        //TODO: explosiong will stop the fire
+        log("TakeDamage"@DamageType@Damage);
+        if ((Damage > 75) && DamageTypeKillsFire(DamageType)) //TODO: don't hardcode
+        {
+            Destroy();
+        }
     }
 
 Begin:
@@ -318,8 +324,16 @@ function bool DamageTypeSetsFire(class<DamageType> DamageType)
     return false;
 }
 
+/** return true if this damage can kill the fire */
+function bool DamageTypeKillsFire(class<DamageType> DamageType)
+{
+    if (class<DamTypeRocket>(DamageType)!=none) return true;
+    return false;
+}
+
 defaultproperties
 {
+    Speed=300.0
     DecallClass=class'fbGasolineStain'
     DrawScale=1
     LifeSpan=60
@@ -329,5 +343,5 @@ defaultproperties
     InstantBurn=false
     TouchCount=0
     DelayedBurn=0.25
-    //DrawType=DT_None
+    DrawType=DT_None
 }
